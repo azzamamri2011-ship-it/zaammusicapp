@@ -18,7 +18,9 @@ const logic = {
         document.getElementById(pageId).classList.add('active');
         element.classList.add('active');
         if (pageId === 'library-page') this.updateLibraryUI();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Scroll inside container instead of window
+        document.querySelector('.app-container').scrollTo({ top: 0, behavior: 'smooth' });
     },
 
     toggleFullPlayer(show) {
@@ -111,20 +113,39 @@ const logic = {
         const audio = document.getElementById('audio-engine');
         document.getElementById('master-player').style.display = 'flex';
         
-        // Update Mini & Full UI
-        const elements = {
+        // Update UI Elements
+        const mappings = {
             'track-thumb': song.thumbnail, 'full-track-thumb': song.thumbnail,
             'track-name': song.title, 'full-track-name': song.title,
             'track-artist': song.author, 'full-track-artist': song.author
         };
-        for (let id in elements) document.getElementById(id).src = document.getElementById(id).innerText = elements[id];
         
-        // Backgrounds
+        for (let id in mappings) {
+            const el = document.getElementById(id);
+            if(el.tagName === 'IMG') el.src = mappings[id];
+            else el.innerText = mappings[id];
+        }
+        
         document.getElementById('player-dynamic-bg').style.backgroundImage = `url('${song.thumbnail}')`;
         document.getElementById('full-player-bg').style.backgroundImage = `url('${song.thumbnail}')`;
 
         audio.src = song.mp3;
-        audio.play().catch(() => this.showToast("Gagal memutar lagu"));
+        audio.play().then(() => {
+            // BACKROUND MUSIC SYSTEM (Media Session)
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: song.title,
+                    artist: song.author,
+                    album: 'ZaamMusic Future',
+                    artwork: [{ src: song.thumbnail, sizes: '512x512', type: 'image/png' }]
+                });
+
+                navigator.mediaSession.setActionHandler('play', () => this.togglePlay());
+                navigator.mediaSession.setActionHandler('pause', () => this.togglePlay());
+                navigator.mediaSession.setActionHandler('previoustrack', () => this.prevTrack());
+                navigator.mediaSession.setActionHandler('nexttrack', () => this.nextTrack());
+            }
+        }).catch(() => this.showToast("Gagal memutar lagu"));
     },
 
     togglePlay() {
@@ -166,21 +187,31 @@ const logic = {
         document.getElementById('search-input').onkeypress = (e) => { if(e.key === 'Enter') this.performSearch(); };
 
         audio.onplay = () => {
-            document.getElementById('play-toggle').innerHTML = '<i class="fas fa-pause-circle"></i>';
-            document.getElementById('play-toggle-full').innerHTML = '<i class="fas fa-pause-circle"></i>';
+            const icon = '<i class="fas fa-pause-circle"></i>';
+            document.getElementById('play-toggle').innerHTML = icon;
+            document.getElementById('play-toggle-full').innerHTML = icon;
         };
         audio.onpause = () => {
-            document.getElementById('play-toggle').innerHTML = '<i class="fas fa-play-circle"></i>';
-            document.getElementById('play-toggle-full').innerHTML = '<i class="fas fa-play-circle"></i>';
+            const icon = '<i class="fas fa-play-circle"></i>';
+            document.getElementById('play-toggle').innerHTML = icon;
+            document.getElementById('play-toggle-full').innerHTML = icon;
         };
 
+        // REAL-TIME TIMER UPDATE
         audio.ontimeupdate = () => {
             if (!this.isDragging && audio.duration) {
                 const cur = Math.floor(audio.currentTime);
                 const dur = Math.floor(audio.duration);
+                
                 [sliderMini, sliderFull].forEach(s => { s.max = dur; s.value = cur; });
-                document.getElementById('time-now').innerText = document.getElementById('full-time-now').innerText = this.formatTime(cur);
-                document.getElementById('time-total').innerText = document.getElementById('full-time-total').innerText = this.formatTime(dur);
+                
+                const nowStr = this.formatTime(cur);
+                const totalStr = this.formatTime(dur);
+
+                document.getElementById('full-time-now').innerText = nowStr;
+                document.getElementById('full-time-total').innerText = totalStr;
+                document.getElementById('time-now-mini').innerText = nowStr;
+                document.getElementById('time-total-mini').innerText = totalStr;
             }
         };
 
