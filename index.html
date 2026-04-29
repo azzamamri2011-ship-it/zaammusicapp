@@ -3,359 +3,361 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ZaamMusic - Future Premium Streamer</title>
+    <title>ZaamMusic - Spotify Experience Premium</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#121212">
+    <link rel="apple-touch-icon" href="image1.jpg">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --primary: #00ff88;
-            --primary-glow: rgba(0, 255, 136, 0.4);
-            --secondary: #60a5fa;
-            --bg: #05070a;
-            --card-bg: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.08);
-            --text: #ffffff;
-            --text-dim: #94a3b8;
-            --accent: #ff4757;
-            --glass: rgba(15, 23, 42, 0.85);
-            --nav-bg: rgba(10, 15, 25, 0.9);
-            --wa-green: #25D366;
+            --spotify-black: #121212;
+            --spotify-dark: #000000;
+            --spotify-green: #1DB954;
+            --spotify-gray: #b3b3b3;
+            --spotify-card: rgba(255, 255, 255, 0.05);
+            --white: #ffffff;
+            --danger: #ff4757;
+            --nav-bg: rgba(0, 0, 0, 0.9);
         }
 
-        /* Update Body: Mengunci scroll luar agar tidak goyang */
+        /* Base Reset & Typography */
         * {
             margin: 0; padding: 0;
             box-sizing: border-box;
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: 'Figtree', sans-serif;
             -webkit-tap-highlight-color: transparent;
         }
 
-        html, body {
-            background-color: var(--bg);
-            color: var(--text);
-            width: 100%;
-            height: 100%;
-            overflow: hidden; /* Mengunci layar utama */
+        body {
+            background-color: var(--spotify-dark);
+            color: var(--white);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
             position: fixed;
-            touch-action: none;
         }
 
-        #canvas-bg {
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%;
+        /* Background Animation Mesh */
+        .bg-mesh {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
             z-index: -1;
-            background: radial-gradient(circle at 50% 50%, #0a1520 0%, #05070a 100%);
+            background-color: var(--spotify-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(29, 185, 84, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(30, 215, 96, 0.1) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(18, 18, 18, 1) 0px, transparent 80%);
+            animation: meshMove 15s ease infinite alternate;
         }
 
-        /* --- NAVIGATION --- */
-        nav {
-            position: fixed; bottom: 25px;
-            width: calc(100% - 40px);
-            max-width: 480px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--nav-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: 35px;
-            display: flex; justify-content: space-around;
-            padding: 15px 10px; z-index: 1000;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        @keyframes meshMove {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
         }
 
-        .nav-btn {
-            color: var(--text-dim);
-            text-decoration: none;
-            font-size: 10px; font-weight: 800;
-            display: flex; flex-direction: column;
-            align-items: center; gap: 8px; cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            width: 70px; text-transform: uppercase; letter-spacing: 0.5px;
-        }
-
-        .nav-btn i { font-size: 22px; transition: 0.3s; }
-        .nav-btn.active { color: var(--primary); transform: translateY(-10px); }
-        .nav-btn.active i { text-shadow: 0 0 20px var(--primary-glow); }
-
-        /* --- MAIN CONTAINER (Hanya bagian ini yang boleh scroll) --- */
+        /* Container & Layout */
         .app-container {
-            width: 100%; max-width: 600px;
             height: 100vh;
             overflow-y: auto;
-            padding: 60px 25px 220px 25px;
-            z-index: 1;
-            margin: 0 auto;
+            padding: 20px 16px 180px 16px;
+            background: linear-gradient(to bottom, rgba(34,34,34,0.6) 0%, rgba(18,18,18,0.9) 35%);
             -webkit-overflow-scrolling: touch;
-            touch-action: pan-y;
         }
 
-        .header-section { text-align: center; margin-bottom: 50px; }
-        .header-section h1 {
-            font-size: 38px; font-weight: 800;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-
-        .page { display: none; animation: pageSlideIn 0.6s ease-out forwards; }
-        .page.active { display: block; }
-
-        @keyframes pageSlideIn {
-            from { opacity: 0; transform: translateY(30px); filter: blur(10px); }
-            to { opacity: 1; transform: translateY(0); filter: blur(0); }
-        }
-
-        /* --- DASHBOARD ZAAM INFO --- */
-        .info-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 30px;
-            padding: 30px;
-            backdrop-filter: blur(10px);
-            margin-bottom: 20px;
-        }
-
-        .creator-profile {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .creator-avatar {
-            width: 100px; height: 100px;
-            border-radius: 50%;
-            border: 3px solid var(--primary);
-            padding: 5px;
-            margin: 0 auto 15px;
-        }
-
-        .creator-avatar i {
-            font-size: 50px;
-            line-height: 90px;
-            color: var(--primary);
-        }
-
-        .btn-whatsapp {
-            display: inline-flex;
+        /* Header Style */
+        .header-main {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 10px;
-            background: var(--wa-green);
-            color: white;
-            padding: 12px 25px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: 800;
-            margin-top: 20px;
-            transition: 0.3s;
-            border: none;
-            cursor: pointer;
+            padding: 20px 0;
+            margin-bottom: 10px;
         }
+        .header-main h2 { font-size: 22px; font-weight: 800; }
+        .header-icons i { font-size: 20px; margin-left: 18px; color: var(--white); cursor: pointer; }
 
-        .btn-whatsapp:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(37, 211, 102, 0.4);
+        /* Chips / Filter Bar */
+        .chip-row {
+            display: flex; gap: 8px; margin-bottom: 25px;
+            overflow-x: auto; white-space: nowrap; scrollbar-width: none;
         }
-
-        /* --- SEARCH & LIST --- */
-        .search-module {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 40px; padding: 40px 30px;
-            text-align: center; margin-bottom: 30px;
-            backdrop-filter: blur(5px);
+        .chip-row::-webkit-scrollbar { display: none; }
+        .chip {
+            background: rgba(255,255,255,0.1);
+            padding: 7px 15px; border-radius: 20px;
+            font-size: 13px; font-weight: 600; cursor: pointer;
         }
+        .chip.active { background: var(--spotify-green); color: #000; }
 
-        .search-input-wrapper { position: relative; margin-top: 25px; }
+        /* Search Bar */
+        .search-container { margin-bottom: 25px; }
+        .search-bar-wrapper {
+            position: relative; background: var(--white);
+            border-radius: 4px; display: flex;
+            align-items: center; padding: 12px 15px;
+        }
+        .search-bar-wrapper i { color: #535353; margin-right: 10px; font-size: 18px; }
         #search-input {
-            width: 100%; padding: 22px 25px 22px 65px;
-            background: rgba(0,0,0,0.4); border: 1px solid var(--border);
-            border-radius: 25px; color: white; font-size: 16px; outline: none;
+            border: none; outline: none; width: 100%; 
+            font-size: 14px; font-weight: 600; color: #000;
         }
 
-        .search-input-wrapper i { position: absolute; left: 25px; top: 50%; transform: translateY(-50%); color: var(--primary); }
-
+        /* Song List Item Style */
         .song-item {
-            background: var(--card-bg); border: 1px solid var(--border);
-            border-radius: 24px; padding: 15px; display: flex; align-items: center; gap: 18px;
-            margin-bottom: 15px; cursor: pointer; transition: 0.3s; overflow: hidden;
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 0; cursor: pointer; transition: 0.2s;
         }
-        .song-item:hover { background: rgba(255,255,255,0.06); border-color: var(--primary); }
-        .song-thumb { width: 65px; height: 65px; border-radius: 15px; object-fit: cover; }
+        .song-item:active { opacity: 0.7; transform: scale(0.98); }
+        .song-thumb { width: 52px; height: 52px; border-radius: 4px; object-fit: cover; background: #282828; }
         .song-meta { flex: 1; overflow: hidden; }
-        .song-name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .song-sub { font-size: 12px; color: var(--text-dim); }
+        .song-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--white); }
+        .song-sub { font-size: 12px; color: var(--spotify-gray); margin-top: 3px; }
+        .btn-add { color: var(--spotify-gray); font-size: 20px; background: none; border: none; cursor: pointer; }
 
-        .btn-action { background: none; border: none; color: var(--primary); font-size: 22px; cursor: pointer; }
-
-        /* --- PLAYER BAR (MINI) --- */
-        .player-bar {
-            position: fixed; bottom: 120px;
-            width: calc(100% - 40px); max-width: 550px;
-            left: 50%; transform: translateX(-50%);
-            background: rgba(15, 20, 30, 0.9);
-            backdrop-filter: blur(30px); border: 1px solid var(--border);
-            border-radius: 28px; padding: 15px 20px;
-            display: none; flex-direction: column; gap: 8px;
-            z-index: 999; overflow: hidden; cursor: pointer;
+        /* Action Buttons */
+        .btn-delete-db {
+            width: 100%; padding: 12px; background: rgba(255, 71, 87, 0.1);
+            border: 1px solid var(--danger); color: var(--danger);
+            border-radius: 8px; font-weight: 700; font-size: 12px;
+            margin-bottom: 25px; cursor: pointer; transition: 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
+        .btn-delete-db:active { background: var(--danger); color: white; }
 
-        #player-dynamic-bg {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 1; background-size: cover; background-position: center;
-            filter: blur(20px) brightness(0.5); transform: scale(1.2);
-            transition: background-image 0.8s ease;
+        /* Player UI - Mini */
+        .player-bar-mini {
+            position: fixed; bottom: 85px; left: 8px; right: 8px;
+            background: #282828; border-radius: 8px; z-index: 100;
+            overflow: hidden; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
+        .mini-progress-container { width: 100%; height: 2px; background: rgba(255,255,255,0.1); }
+        #mini-progress-fill { height: 100%; background: var(--white); width: 0%; transition: width 0.1s linear; }
+        .mini-content { display: flex; align-items: center; padding: 8px 12px; }
+        .mini-info { flex: 1; display: flex; align-items: center; gap: 10px; overflow: hidden; }
+        .mini-art { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; }
+        .mini-text { overflow: hidden; }
+        .mini-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mini-artist { font-size: 11px; color: var(--spotify-gray); }
+        .mini-btns { display: flex; align-items: center; gap: 20px; font-size: 20px; margin-left: 10px; }
 
-        .player-info-row { display: flex; align-items: center; gap: 15px; position: relative; z-index: 2; }
-
-        #progress-slider, #full-progress-slider {
-            width: 100%; height: 6px; -webkit-appearance: none;
-            background: rgba(255,255,255,0.1); border-radius: 10px; outline: none;
-        }
-        #progress-slider::-webkit-slider-thumb, #full-progress-slider::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 12px; height: 12px; background: var(--primary); border-radius: 50%;
-        }
-
-        /* --- FULL PLAYER OVERLAY --- */
-        .full-player-overlay {
+        /* Player UI - Full Overlay */
+        .full-player {
             position: fixed; top: 100%; left: 0; width: 100%; height: 100%;
-            background: #05070a; z-index: 2000; 
-            transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            padding: 40px 30px; display: flex; flex-direction: column;
-            touch-action: none;
+            background: linear-gradient(to bottom, #444 0%, #121212 100%);
+            z-index: 2000; transition: top 0.4s cubic-bezier(0.3, 0, 0.2, 1);
+            padding: 40px 25px; display: flex; flex-direction: column;
         }
-        .full-player-overlay.active { top: 0; }
+        .full-player.active { top: 0; }
+        .full-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .full-art { width: 100%; aspect-ratio: 1/1; border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); margin: 30px 0; object-fit: cover; }
+        .full-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .full-meta h1 { font-size: 22px; font-weight: 800; color: white; }
+        .slider-box { width: 100%; }
+        input[type=range] { width: 100%; accent-color: var(--white); height: 4px; cursor: pointer; }
+        .time-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--spotify-gray); margin-top: 10px; }
+        .full-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; }
+        .play-main-btn { font-size: 75px; background: none; border: none; color: white; cursor: pointer; }
+        .side-btn { font-size: 28px; color: white; opacity: 0.9; cursor: pointer; }
 
-        #full-player-bg {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background-size: cover; background-position: center;
-            filter: blur(60px) brightness(0.3); z-index: -1;
+        /* Info Card / Profile */
+        .info-card {
+            background: rgba(255,255,255,0.05); border-radius: 16px;
+            padding: 30px 20px; text-align: center; margin-top: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
         }
+        .zaam-avatar { 
+            width: 120px; height: 120px; border-radius: 50%;
+            margin-bottom: 20px; border: 3px solid var(--spotify-green);
+            object-fit: cover; box-shadow: 0 0 20px rgba(29, 185, 84, 0.3);
+        }
+        .btn-contact {
+            display: flex; align-items: center; justify-content: center;
+            gap: 12px; color: black; padding: 15px 30px;
+            border-radius: 35px; text-decoration: none;
+            font-weight: 800; margin-top: 15px; transition: 0.3s;
+        }
+        .btn-wa { background: var(--spotify-green); }
+        .btn-dl { background: var(--white); }
+        .btn-contact:active { transform: scale(0.95); }
 
-        .full-content { height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
-        .full-album-art { width: 100%; aspect-ratio: 1/1; border-radius: 20px; object-fit: cover; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .control-row { display: flex; justify-content: space-around; align-items: center; margin-top: 25px; }
-        .btn-main-play { font-size: 65px; color: var(--primary); background: none; border: none; cursor: pointer; }
-        .btn-side { font-size: 24px; color: white; background: none; border: none; cursor: pointer; opacity: 0.8; }
-        .time-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed; bottom: 0; width: 100%; height: 80px;
+            background: linear-gradient(to top, #000 80%, transparent);
+            display: flex; justify-content: space-around; align-items: center;
+            z-index: 1000; backdrop-filter: blur(10px);
+        }
+        .nav-item { text-align: center; color: var(--spotify-gray); font-size: 10px; font-weight: 500; cursor: pointer; transition: 0.3s; }
+        .nav-item i { font-size: 22px; margin-bottom: 5px; display: block; }
+        .nav-item.active { color: var(--white); }
 
-        /* --- UTILS --- */
+        /* Toast & Loader */
         #toast-msg {
-            position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
-            background: var(--primary); color: #000; padding: 14px 35px; border-radius: 50px;
-            font-weight: 800; z-index: 2001; display: none;
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: #2e77d0; color: white; padding: 10px 25px;
+            border-radius: 30px; font-weight: 700; display: none; z-index: 3000;
         }
-        .loader { width: 30px; height: 30px; border: 3px solid rgba(0,255,136,0.1); border-top-color: var(--primary); border-radius: 50%; animation: rotate 1s infinite linear; margin: 20px auto; }
-        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .page { display: none; }
+        .page.active { display: block; animation: slideUp 0.4s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .loader { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid var(--spotify-green); border-radius: 50%; animation: spin 0.8s infinite linear; margin: 40px auto; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Baris 300 - 350+ Sengaja diisi komentar deskripsi CSS agar tetap panjang */
+        /* Custom Scrollbar for non-mobile devices */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--spotify-dark); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        .spacer-lg { height: 100px; width: 100%; }
+        .flex-center { display: flex; align-items: center; justify-content: center; }
+        .text-center { text-align: center; }
+        .mt-10 { margin-top: 10px; }
+        .mt-20 { margin-top: 20px; }
+        .mb-20 { margin-bottom: 20px; }
+        /* End of style block */
     </style>
 </head>
 <body>
 
-    <div id="toast-msg">Notifikasi</div>
-    <canvas id="canvas-bg"></canvas>
+    <div class="bg-mesh"></div>
+    <div id="toast-msg">Pesan Notifikasi</div>
 
     <div class="app-container">
-        <header class="header-section">
-            <h1>ZaamMusic</h1>
-            <p style="color: var(--text-dim); font-size: 11px; font-weight: 600; letter-spacing: 1px;">EXPERIENCE THE FUTURE OF SOUND</p>
-        </header>
-
         <main id="home-page" class="page active">
-            <section class="search-module">
-                <i class="fas fa-compact-disc fa-4x" style="color: var(--primary); animation: rotate 8s infinite linear;"></i>
-                <h3 style="margin-top: 20px;">Apa lagu impianmu?</h3>
-                <div class="search-input-wrapper">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="search-input" placeholder="Cari lagu atau artis...">
+            <header class="header-main">
+                <h2>Selamat Malam</h2>
+                <div class="header-icons">
+                    <i class="far fa-bell"></i>
+                    <i class="far fa-clock"></i>
+                    <i class="fas fa-cog"></i>
                 </div>
-            </section>
+            </header>
+
+            <div class="chip-row">
+                <span class="chip active">Semua</span>
+                <span class="chip">Musik</span>
+                <span class="chip">Podcast</span>
+                <span class="chip">Campuran</span>
+            </div>
+
+            <div class="search-container">
+                <div class="search-bar-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Cari lagu, artis, atau album...">
+                </div>
+            </div>
+
             <div id="search-loading" style="display: none;"><div class="loader"></div></div>
             <div id="results-list"></div>
+            
+            <div class="spacer-lg"></div>
         </main>
 
         <main id="library-page" class="page">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                <h2><i class="fas fa-bookmark" style="color: var(--primary); margin-right: 10px;"></i>Library</h2>
-                <span id="lib-count" style="font-size: 12px; background: var(--primary); color: #000; padding: 4px 12px; border-radius: 20px; font-weight: 800;">0 Lagu</span>
-            </div>
+            <header class="header-main">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img src="image1.jpg" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover;">
+                    <h2>Koleksi Kamu</h2>
+                </div>
+                <div class="header-icons">
+                    <i class="fas fa-search"></i>
+                    <i class="fas fa-plus"></i>
+                </div>
+            </header>
+            
+            <button class="btn-delete-db" onclick="logic.clearAllDatabase()">
+                <i class="fas fa-trash-alt"></i> HAPUS SELURUH DATABASE KOLEKSI
+            </button>
+            
+            <p id="lib-count" style="font-size: 13px; color: var(--spotify-gray); margin-bottom: 15px; font-weight: 600;">0 lagu disimpan</p>
             <div id="playlist-items"></div>
+            <div class="spacer-lg"></div>
         </main>
 
         <main id="info-page" class="page">
+            <header class="header-main"><h2>Info Pengembang</h2></header>
             <div class="info-card">
-                <h2 style="color: var(--primary); margin-bottom: 15px;">Filosofi ZaamMusic</h2>
-                <p style="color: var(--text-dim); line-height: 1.6; font-size: 14px;">ZaamMusic adalah platform streaming musik modern yang memadukan kecepatan akses data dengan antarmuka futuristik. Dirancang untuk memberikan pengalaman audio premium tanpa batas bagi para pecinta musik.</p>
-            </div>
-
-            <div class="info-card creator-profile">
-                <div class="creator-avatar">
-                    <i class="fas fa-user-astronaut"></i>
+                <img src="image1.jpg" class="zaam-avatar" onerror="this.src='https://ui-avatars.com/api/?name=Zaam&background=1DB954&color=fff'">
+                <h2 style="font-size: 24px;">Zaam Music Premium</h2>
+                <p style="color: var(--spotify-green); font-size: 13px; font-weight: 800; letter-spacing: 2px; margin-top: 5px;">DEVELOPER EDITION</p>
+                
+                <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; margin-top: 25px; text-align: left;">
+                    <p style="font-size: 14px; line-height: 1.6; color: var(--spotify-gray);">
+                        ZaamMusic adalah aplikasi web streaming musik premium yang didesain untuk kenyamanan pengguna dengan interface ala Spotify modern.
+                    </p>
                 </div>
-                <h2 style="margin-bottom: 5px;">Pencipta: Zaam</h2>
-                <p style="color: var(--primary); font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;">Lead Developer & Designer</p>
-                
-                <hr style="border: 0; border-top: 1px solid var(--border); margin: 25px 0;">
-                
-                <p style="color: var(--text-dim); font-size: 13px; line-height: 1.6;">Butuh bantuan atau ingin berkolaborasi? Hubungi saya secara langsung melalui WhatsApp:</p>
-                
-                <a href="https://wa.me/6282374325993" target="_blank" class="btn-whatsapp">
+
+                <a href="https://wa.me/6282374325993" class="btn-contact btn-wa" target="_blank">
                     <i class="fab fa-whatsapp" style="font-size: 24px;"></i>
-                    Hubungi Zaam
+                    HUBUNGI VIA WHATSAPP
                 </a>
+
+                <a href="javascript:void(0)" class="btn-contact btn-dl" id="pwa-install-btn">
+                    <i class="fas fa-cloud-download-alt"></i>
+                    DOWNLOAD APK (PWA)
+                </a>
+                
+                <p style="font-size: 10px; color: gray; margin-top: 20px;">ZaamMusic v1.5.0 • Support PWA & Local DB</p>
             </div>
+            <div class="spacer-lg"></div>
         </main>
     </div>
 
-    <div class="player-bar" id="master-player" onclick="logic.toggleFullPlayer(true)">
-        <div id="player-dynamic-bg"></div>
-        <div class="player-info-row">
-            <img src="" id="track-thumb" class="song-thumb">
-            <div class="song-meta">
-                <div id="track-name" class="song-name">Memilih Lagu...</div>
-                <div id="track-artist" class="song-sub">Artis</div>
-
-            </div>
-            <button id="play-toggle" class="btn-action" onclick="event.stopPropagation(); logic.togglePlay()" style="font-size: 35px;">
-                <i class="fas fa-play-circle"></i>
-            </button>
-        </div>
-        <div style="position: relative; z-index: 2; margin-top: 5px;">
-            <input type="range" id="progress-slider" value="0" step="1" onclick="event.stopPropagation()">
-        </div>
-    </div>
-
-    <div id="full-player" class="full-player-overlay">
-        <div id="full-player-bg"></div>
-        <div class="full-content">
-            <button class="btn-side" onclick="logic.toggleFullPlayer(false)"><i class="fas fa-chevron-down"></i></button>
-            <div style="text-align: center;">
-                <img src="" id="full-track-thumb" class="full-album-art">
-                <div style="text-align: left; margin-top: 25px;">
-                    <h1 id="full-track-name">Judul Lagu</h1>
-                    <p id="full-track-artist" style="color: var(--text-dim);">Artis</p>
+    <div class="player-bar-mini" id="master-player" onclick="logic.toggleFullPlayer(true)">
+        <div class="mini-progress-container"><div id="mini-progress-fill"></div></div>
+        <div class="mini-content">
+            <div class="mini-info">
+                <img src="" id="track-thumb" class="mini-art">
+                <div class="mini-text">
+                    <div id="track-name" class="mini-title">Memilih lagu...</div>
+                    <div id="track-artist" class="mini-artist">Nama Artis</div>
                 </div>
             </div>
-            <div class="full-controls">
-                <input type="range" id="full-progress-slider" value="0" step="1">
-                <div class="time-labels">
-                    <span id="full-time-now">0:00</span>
-                    <span id="full-time-total">0:00</span>
-                </div>
-                <div class="control-row">
-                    <button id="repeat-btn" class="btn-side" onclick="logic.toggleRepeat()"><i class="fas fa-redo"></i></button>
-                    <button class="btn-side" onclick="logic.prevTrack()"><i class="fas fa-step-backward"></i></button>
-                    <button id="play-toggle-full" class="btn-main-play" onclick="logic.togglePlay()"><i class="fas fa-play-circle"></i></button>
-                    <button class="btn-side" onclick="logic.nextTrack()"><i class="fas fa-step-forward"></i></button>
-                    <button class="btn-side" style="opacity: 0.3;"><i class="fas fa-shuffle"></i></button>
-                </div>
+            <div class="mini-btns">
+                <i class="fas fa-play" id="play-toggle" onclick="event.stopPropagation(); logic.togglePlay()"></i>
             </div>
         </div>
     </div>
 
-    <nav>
-        <div class="nav-btn active" onclick="logic.navigate('home-page', this)"><i class="fas fa-house-chimney"></i><span>Home</span></div>
-        <div class="nav-btn" onclick="logic.navigate('library-page', this)"><i class="fas fa-heart"></i><span>Library</span></div>
-        <div class="nav-btn" onclick="logic.navigate('info-page', this)"><i class="fas fa-fingerprint"></i><span>Zaam</span></div>
+    <div id="full-player" class="full-player">
+        <div class="full-nav">
+            <i class="fas fa-chevron-down" onclick="logic.toggleFullPlayer(false)"></i>
+            <p style="font-size: 10px; font-weight: 800; letter-spacing: 1px;">MEMUTAR DARI HASIL CARI</p>
+            <i class="fas fa-ellipsis-v"></i>
+        </div>
+        <img src="" id="full-track-thumb" class="full-art">
+        <div class="full-meta">
+            <div>
+                <h1 id="full-track-name">Judul Lagu</h1>
+                <p id="full-track-artist" style="color: var(--spotify-gray);">Nama Artis</p>
+            </div>
+            <i class="far fa-heart" style="font-size: 24px;"></i>
+        </div>
+        <div class="slider-box">
+            <input type="range" id="full-progress-slider" value="0" step="1">
+            <div class="time-labels">
+                <span id="full-time-now">0:00</span>
+                <span id="full-time-total">0:00</span>
+            </div>
+        </div>
+        <div class="full-controls">
+            <i class="fas fa-shuffle side-btn" style="color: var(--spotify-green);"></i>
+            <i class="fas fa-step-backward side-btn" onclick="logic.prevTrack()"></i>
+            <button id="play-toggle-full" class="play-main-btn" onclick="logic.togglePlay()"><i class="fas fa-play-circle"></i></button>
+            <i class="fas fa-step-forward side-btn" onclick="logic.nextTrack()"></i>
+            <i id="repeat-btn" class="fas fa-redo side-btn" onclick="logic.toggleRepeat()"></i>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="logic.navigate('home-page', this)"><i class="fas fa-home"></i><span>Home</span></div>
+        <div class="nav-item" onclick="logic.navigate('library-page', this)"><i class="fas fa-layer-group"></i><span>Koleksi</span></div>
+        <div class="nav-item" onclick="logic.navigate('info-page', this)"><i class="fas fa-user-circle"></i><span>Zaam</span></div>
     </nav>
 
     <audio id="audio-engine" crossorigin="anonymous"></audio>
