@@ -164,6 +164,18 @@
         .play-main-btn { font-size: 75px; background: none; border: none; color: white; cursor: pointer; }
         .side-btn { font-size: 28px; color: white; opacity: 0.9; cursor: pointer; }
 
+        /* Category Card Design */
+        .category-card {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: 0.3s;
+        }
+        .category-card:active { transform: scale(0.95); background: rgba(255,255,255,0.1); }
+
         /* Info Card / Profile */
         .info-card {
             background: rgba(255,255,255,0.05); border-radius: 16px;
@@ -208,18 +220,11 @@
         .loader { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid var(--spotify-green); border-radius: 50%; animation: spin 0.8s infinite linear; margin: 40px auto; }
         @keyframes spin { to { transform: rotate(360deg); } }
         
-        /* Baris 300 - 350+ Sengaja diisi komentar deskripsi CSS agar tetap panjang */
-        /* Custom Scrollbar for non-mobile devices */
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: var(--spotify-dark); }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
         .spacer-lg { height: 100px; width: 100%; }
-        .flex-center { display: flex; align-items: center; justify-content: center; }
-        .text-center { text-align: center; }
-        .mt-10 { margin-top: 10px; }
-        .mt-20 { margin-top: 20px; }
-        .mb-20 { margin-bottom: 20px; }
-        /* End of style block */
     </style>
 </head>
 <body>
@@ -264,18 +269,36 @@
                     <img src="image1.jpg" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover;">
                     <h2>Koleksi Kamu</h2>
                 </div>
-                <div class="header-icons">
-                    <i class="fas fa-search"></i>
-                    <i class="fas fa-plus"></i>
-                </div>
             </header>
             
-            <button class="btn-delete-db" onclick="logic.clearAllDatabase()">
-                <i class="fas fa-trash-alt"></i> HAPUS SELURUH DATABASE KOLEKSI
-            </button>
-            
-            <p id="lib-count" style="font-size: 13px; color: var(--spotify-gray); margin-bottom: 15px; font-weight: 600;">0 lagu disimpan</p>
-            <div id="playlist-items"></div>
+            <div id="library-hub">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                    <div class="category-card" onclick="logic.renderLibraryCategory('history')">
+                        <img src="image3.jpg" style="width: 100%; aspect-ratio:1/1; border-radius: 8px; margin-bottom: 10px; object-fit: cover;">
+                        <h4 style="font-size: 14px;">History</h4>
+                        <p id="hist-count-label" style="font-size: 11px; color: var(--spotify-gray);">Baru saja diputar</p>
+                    </div>
+
+                    <div class="category-card" onclick="logic.renderLibraryCategory('favorites')">
+                        <img src="image4.jpg" style="width: 100%; aspect-ratio:1/1; border-radius: 8px; margin-bottom: 10px; object-fit: cover;">
+                        <h4 style="font-size: 14px;">Favorit</h4>
+                        <p id="fav-count-label" style="font-size: 11px; color: var(--spotify-gray);">0 lagu disimpan</p>
+                    </div>
+                </div>
+                
+                <button class="btn-delete-db" onclick="logic.clearAllDatabase()">
+                    <i class="fas fa-trash-alt"></i> HAPUS SELURUH DATABASE
+                </button>
+            </div>
+
+            <div id="library-detail-view" style="display: none;">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                    <i class="fas fa-arrow-left" onclick="logic.closeLibraryDetail()" style="font-size: 20px; cursor: pointer;"></i>
+                    <h3 id="library-title-text">Detail</h3>
+                </div>
+                <div id="playlist-items"></div>
+            </div>
+
             <div class="spacer-lg"></div>
         </main>
 
@@ -302,7 +325,7 @@
                     DOWNLOAD APK (PWA)
                 </a>
                 
-                <p style="font-size: 10px; color: gray; margin-top: 20px;">ZaamMusic v1.5.0 • Support PWA & Local DB</p>
+                <p style="font-size: 10px; color: gray; margin-top: 20px;">ZaamMusic v1.8.0 • Support PWA & Local DB</p>
             </div>
             <div class="spacer-lg"></div>
         </main>
@@ -336,7 +359,7 @@
                 <h1 id="full-track-name">Judul Lagu</h1>
                 <p id="full-track-artist" style="color: var(--spotify-gray);">Nama Artis</p>
             </div>
-            <i class="far fa-heart" style="font-size: 24px;"></i>
+            <i class="far fa-heart" id="heart-btn-full" style="font-size: 24px; cursor: pointer;"></i>
         </div>
         <div class="slider-box">
             <input type="range" id="full-progress-slider" value="0" step="1">

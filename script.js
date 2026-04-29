@@ -1,11 +1,13 @@
 /**
- * ZaamMusic Logic Engine v1.8.0
+ * ZaamMusic Logic Engine v1.8.1 (Enhanced Library Edition)
  * Author: Zaam Developer
- * Deskripsi: Engine pemutar musik streaming dengan perbaikan PWA Lifecycle & Media Session.
+ * Deskripsi: Engine pemutar musik streaming dengan pemisahan otomatis History & Favorit.
  */
 
 const logic = {
-    myLibrary: JSON.parse(localStorage.getItem('zaam_library')) || [],
+    // Penambahan database History yang terpisah dari Library (Favorit)
+    myLibrary: JSON.parse(localStorage.getItem('zaam_favorites')) || [], // Favorit (Bintang)
+    myHistory: JSON.parse(localStorage.getItem('zaam_history')) || [],     // History (Love)
     currentIndex: -1,
     isDragging: false,
     playSource: 'search',
@@ -14,21 +16,19 @@ const logic = {
 
     init() {
         this.setupEventListeners();
-        this.updateLibraryUI();
+        this.updateLibraryLabels(); // Update jumlah angka di tampilan menu utama
         this.initPWA();
-        this.registerServiceWorker(); // Pendaftaran SW yang lebih kuat
-        console.log("Zaam Engine v1.8.0 Initialized.");
+        this.registerServiceWorker();
+        console.log("Zaam Engine v1.8.1 Initialized with Auto-History.");
     },
 
     // --- PERBAIKAN REGISTRASI SW ---
     registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // Pastikan file sw.js ada di root folder yang sama dengan index.html
                 navigator.serviceWorker.register('./sw.js')
                     .then(reg => {
                         console.log('SW terdaftar:', reg.scope);
-                        // Memaksa update jika ada perubahan pada sw.js
                         reg.update();
                     })
                     .catch(err => console.log('SW Gagal:', err));
@@ -38,13 +38,10 @@ const logic = {
 
     // --- PERBAIKAN PWA INSTALLATION SYSTEM ---
     initPWA() {
-        // Event ini hanya akan muncul jika SW aktif dan koneksi HTTPS aman
         window.addEventListener('beforeinstallprompt', (e) => {
             console.log("Browser mendukung instalasi PWA!");
             e.preventDefault();
             this.deferredPrompt = e;
-            
-            // Opsional: Langsung ganti teks tombol jika sudah siap diinstal
             const installBtn = document.getElementById('pwa-install-btn');
             if (installBtn) {
                 installBtn.innerHTML = '<i class="fas fa-arrow-alt-circle-down"></i> PASANG ZAAM MUSIC';
@@ -59,32 +56,86 @@ const logic = {
                 if (this.deferredPrompt) {
                     this.deferredPrompt.prompt();
                     const { outcome } = await this.deferredPrompt.userChoice;
-                    console.log(`User response: ${outcome}`);
-                    if (outcome === 'accepted') {
-                        this.showToast("Instalasi dimulai...");
-                    }
+                    if (outcome === 'accepted') this.showToast("Instalasi dimulai...");
                     this.deferredPrompt = null;
                 } else {
-                    // Pesan ini muncul jika SW belum 'Active' atau masih di HTTP
-                    this.showToast("Sistem belum siap. Pastikan menggunakan HTTPS dan tunggu 5 detik.");
+                    this.showToast("Sistem belum siap. Gunakan HTTPS.");
                 }
             });
         }
 
         window.addEventListener('appinstalled', () => {
-            this.showToast("ZaamMusic berhasil terpasang di perangkat!");
+            this.showToast("ZaamMusic terpasang!");
             this.deferredPrompt = null;
         });
     },
 
-    // --- UI NAVIGATION ---
+    // --- UI NAVIGATION & CATEGORY SYSTEM ---
     navigate(pageId, element) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
         element.classList.add('active');
-        if(pageId === 'library-page') this.updateLibraryUI();
+        
+        // Jika ke halaman koleksi, pastikan kembali ke menu utama koleksi dulu
+        if(pageId === 'library-page') this.closeLibraryDetail();
         document.querySelector('.app-container').scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    // Merender daftar lagu berdasarkan kategori yang dipilih
+    renderLibraryCategory(type) {
+        const hub = document.getElementById('library-hub');
+        const detail = document.getElementById('library-detail-view');
+        const list = document.getElementById('playlist-items');
+        const title = document.getElementById('library-title-text');
+
+        if(!hub || !detail) return;
+
+        hub.style.display = 'none';
+        detail.style.display = 'block';
+        list.innerHTML = '';
+        
+        let source = (type === 'favorites') ? this.myLibrary : this.myHistory;
+        title.innerText = (type === 'favorites') ? 'Lagu Favorit' : 'History Putar';
+
+        if(source.length === 0) {
+            list.innerHTML = `<p style="text-align:center;color:gray;padding:40px;">Belum ada lagu di sini.</p>`;
+            return;
+        }
+
+        source.forEach((song, index) => {
+            const item = document.createElement('div');
+            item.className = 'song-item';
+            item.innerHTML = `
+                <img src="${song.thumbnail}" class="song-thumb">
+                <div class="song-meta">
+                    <div class="song-name">${song.title}</div>
+                    <div class="song-sub">${song.author}</div>
+                </div>
+                <button class="btn-add"><i class="fas fa-trash-alt"></i></button>`;
+            
+            item.onclick = () => { 
+                this.playSource = type; 
+                this.currentIndex = index; 
+                this.playTrack(song); 
+            };
+            
+            item.querySelector('.btn-add').onclick = (e) => {
+                e.stopPropagation();
+                this.removeFromSpecificList(type, index);
+            };
+            list.appendChild(item);
+        });
+    },
+
+    closeLibraryDetail() {
+        const hub = document.getElementById('library-hub');
+        const detail = document.getElementById('library-detail-view');
+        if(hub && detail) {
+            hub.style.display = 'block';
+            detail.style.display = 'none';
+        }
+        this.updateLibraryLabels();
     },
 
     toggleFullPlayer(show) {
@@ -103,35 +154,52 @@ const logic = {
     // --- DATABASE CORE ---
     saveToLibrary(song) {
         const exists = this.myLibrary.some(item => item.title === song.title);
-        if (exists) { this.showToast("Lagu sudah ada!"); return; }
-        this.myLibrary.push(song);
+        if (exists) { this.showToast("Sudah ada di favorit!"); return; }
+        this.myLibrary.unshift(song);
         this.syncStorage();
-        this.showToast("Tersimpan ke Koleksi.");
-        this.updateLibraryUI();
+        this.showToast("Disimpan ke Favorit.");
+        this.updateLibraryLabels();
     },
 
-    removeFromLibrary(index, e) {
-        e.stopPropagation();
-        if(confirm("Hapus lagu ini?")) {
-            this.myLibrary.splice(index, 1);
+    // Menambah ke history (Otomatis saat lagu diputar)
+    addToHistory(song) {
+        // Hapus duplikat lama agar lagu terbaru naik ke atas
+        this.myHistory = this.myHistory.filter(item => item.title !== song.title);
+        this.myHistory.unshift(song);
+        if (this.myHistory.length > 50) this.myHistory.pop(); // Maksimal 50 histori
+        this.syncStorage();
+        this.updateLibraryLabels();
+    },
+
+    removeFromSpecificList(type, index) {
+        if(confirm("Hapus dari daftar ini?")) {
+            if(type === 'favorites') this.myLibrary.splice(index, 1);
+            else this.myHistory.splice(index, 1);
             this.syncStorage();
-            this.updateLibraryUI();
-            this.showToast("Dihapus.");
+            this.renderLibraryCategory(type);
         }
     },
 
     clearAllDatabase() {
-        if (this.myLibrary.length === 0) return;
-        if (confirm("Hapus seluruh koleksi?")) {
+        if (confirm("Hapus seluruh histori dan favorit secara permanen?")) {
             this.myLibrary = [];
+            this.myHistory = [];
             this.syncStorage();
-            this.updateLibraryUI();
-            this.showToast("Database bersih.");
+            this.closeLibraryDetail();
+            this.showToast("Database dibersihkan.");
         }
     },
 
     syncStorage() {
-        localStorage.setItem('zaam_library', JSON.stringify(this.myLibrary));
+        localStorage.setItem('zaam_favorites', JSON.stringify(this.myLibrary));
+        localStorage.setItem('zaam_history', JSON.stringify(this.myHistory));
+    },
+
+    updateLibraryLabels() {
+        const favLabel = document.getElementById('fav-count-label');
+        const histLabel = document.getElementById('hist-count-label');
+        if(favLabel) favLabel.innerText = `${this.myLibrary.length} lagu disimpan`;
+        if(histLabel) histLabel.innerText = `${this.myHistory.length} lagu terakhir`;
     },
 
     // --- SEARCH ENGINE ---
@@ -169,28 +237,7 @@ const logic = {
         list.appendChild(item);
     },
 
-    updateLibraryUI() {
-        const list = document.getElementById('playlist-items');
-        if(!list) return;
-        document.getElementById('lib-count').innerText = `${this.myLibrary.length} lagu`;
-        list.innerHTML = '';
-        if(this.myLibrary.length === 0) {
-            list.innerHTML = `<p style="text-align:center;color:gray;padding:20px;">Kosong</p>`;
-            return;
-        }
-        this.myLibrary.forEach((song, index) => {
-            const item = document.createElement('div');
-            item.className = 'song-item';
-            item.innerHTML = `<img src="${song.thumbnail}" class="song-thumb">
-                <div class="song-meta"><div class="song-name">${song.title}</div></div>
-                <button class="btn-add"><i class="fas fa-trash"></i></button>`;
-            item.onclick = () => { this.playSource = 'library'; this.currentIndex = index; this.playTrack(song); };
-            item.querySelector('.btn-add').onclick = (e) => this.removeFromLibrary(index, e);
-            list.appendChild(item);
-        });
-    },
-
-    // --- PLAYER & MEDIA SESSION (UNTUK NEXT/PREV DI LATAR BELAKANG) ---
+    // --- PLAYER CORE ---
     playTrack(song) {
         const audio = document.getElementById('audio-engine');
         document.getElementById('master-player').style.display = 'block';
@@ -204,15 +251,15 @@ const logic = {
         audio.src = song.mp3;
         audio.play();
         
-        // KRUSIAL: Media Session agar tombol di notifikasi bekerja
+        // OTOMATIS: Tambahkan ke history setiap kali lagu diputar
+        this.addToHistory(song);
+
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: song.title,
                 artist: song.author,
                 artwork: [{ src: song.thumbnail, sizes: '512x512', type: 'image/png' }]
             });
-
-            // Handler tombol di latar belakang / lockscreen
             navigator.mediaSession.setActionHandler('play', () => this.togglePlay());
             navigator.mediaSession.setActionHandler('pause', () => this.togglePlay());
             navigator.mediaSession.setActionHandler('nexttrack', () => this.nextTrack());
@@ -226,16 +273,18 @@ const logic = {
     },
 
     nextTrack() {
-        if (this.playSource === 'library' && this.myLibrary.length > 0) {
-            this.currentIndex = (this.currentIndex + 1) % this.myLibrary.length;
-            this.playTrack(this.myLibrary[this.currentIndex]);
+        let list = (this.playSource === 'favorites') ? this.myLibrary : this.myHistory;
+        if (list.length > 0) {
+            this.currentIndex = (this.currentIndex + 1) % list.length;
+            this.playTrack(list[this.currentIndex]);
         }
     },
 
     prevTrack() {
-        if (this.playSource === 'library' && this.myLibrary.length > 0) {
-            this.currentIndex = (this.currentIndex - 1 + this.myLibrary.length) % this.myLibrary.length;
-            this.playTrack(this.myLibrary[this.currentIndex]);
+        let list = (this.playSource === 'favorites') ? this.myLibrary : this.myHistory;
+        if (list.length > 0) {
+            this.currentIndex = (this.currentIndex - 1 + list.length) % list.length;
+            this.playTrack(list[this.currentIndex]);
         }
     },
 
@@ -281,7 +330,7 @@ const logic = {
         slider.oninput = () => { this.isDragging = true; };
         slider.onchange = () => { audio.currentTime = slider.value; this.isDragging = false; };
         
-        console.log("Zaam Engine Event Listeners: All systems online. PWA logic reinforced.");
+        console.log("Zaam Engine Event Listeners: All systems online. History & Favorites syncing.");
     }
 };
 
