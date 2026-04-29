@@ -1,7 +1,7 @@
 /**
- * ZaamMusic Logic Engine v1.5
+ * ZaamMusic Logic Engine v1.7.0
  * Author: Zaam Developer
- * Deskripsi: Engine pemutar musik streaming berbasis YT API dengan fitur PWA & Database Lokal.
+ * Deskripsi: Engine pemutar musik streaming berbasis YT API dengan integrasi PWA Full.
  */
 
 const logic = {
@@ -16,15 +16,29 @@ const logic = {
         this.setupEventListeners();
         this.updateLibraryUI();
         this.initPWA();
-        console.log("Zaam Engine v1.5 Initialized. Baris kode dipertahankan.");
+        this.registerServiceWorker(); // Langkah krusial untuk Instalasi
+        console.log("Zaam Engine v1.7.0 Berhasil Dimuat.");
+    },
+
+    // --- FITUR UTAMA: REGISTRASI SERVICE WORKER ---
+    registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW terdaftar dengan scope:', reg.scope))
+                    .catch(err => console.log('SW gagal didaftarkan:', err));
+            });
+        }
     },
 
     // --- PWA INSTALLATION SYSTEM ---
     initPWA() {
+        // Event ini hanya terpanggil jika file sw.js ada dan HTTPS aktif
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             this.deferredPrompt = e;
-            console.log("PWA Prompt Ready");
+            console.log("PWA Siap Diinstal");
+            this.showToast("ZaamMusic siap diinstal ke layar utama!");
         });
 
         const installBtn = document.getElementById('pwa-install-btn');
@@ -34,11 +48,12 @@ const logic = {
                     this.deferredPrompt.prompt();
                     const { outcome } = await this.deferredPrompt.userChoice;
                     if (outcome === 'accepted') {
-                        this.showToast("Berhasil! Aplikasi sedang diinstal.");
+                        this.showToast("Instalasi berhasil!");
                     }
                     this.deferredPrompt = null;
                 } else {
-                    this.showToast("Buka di Chrome (Android) atau Safari (iOS) untuk instalasi APK.");
+                    // Jika deferredPrompt null, berarti syarat PWA belum terpenuhi
+                    this.showToast("Gunakan Chrome & pastikan HTTPS aktif untuk menginstal.");
                 }
             });
         }
@@ -46,18 +61,14 @@ const logic = {
 
     // --- UI NAVIGATION ---
     navigate(pageId, element) {
-        // Menghilangkan status active dari halaman dan tombol navigasi lama
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         
-        // Mengaktifkan halaman yang dipilih
         document.getElementById(pageId).classList.add('active');
         element.classList.add('active');
 
-        // Refresh UI Koleksi jika berpindah ke halaman koleksi
         if(pageId === 'library-page') this.updateLibraryUI();
         
-        // Mengembalikan posisi scroll ke atas
         document.querySelector('.app-container').scrollTo({ top: 0, behavior: 'smooth' });
     },
 
@@ -71,25 +82,25 @@ const logic = {
         const t = document.getElementById('toast-msg');
         t.innerText = text;
         t.style.display = 'block';
-        setTimeout(() => { t.style.display = 'none'; }, 2500);
+        setTimeout(() => { t.style.display = 'none'; }, 3000);
     },
 
     // --- DATABASE & STORAGE CORE ---
     saveToLibrary(song) {
         const exists = this.myLibrary.some(item => item.title === song.title);
         if (exists) {
-            this.showToast("Lagu sudah tersimpan di koleksi!");
+            this.showToast("Lagu sudah ada di Koleksi!");
             return;
         }
         this.myLibrary.push(song);
         this.syncStorage();
-        this.showToast("Berhasil disimpan ke Koleksi.");
+        this.showToast("Tersimpan di Database Lokal.");
         this.updateLibraryUI();
     },
 
     removeFromLibrary(index, e) {
         e.stopPropagation();
-        if(confirm("Hapus lagu ini dari koleksi?")) {
+        if(confirm("Hapus lagu ini?")) {
             this.myLibrary.splice(index, 1);
             this.syncStorage();
             this.updateLibraryUI();
@@ -97,18 +108,13 @@ const logic = {
         }
     },
 
-    // FITUR: Hapus Seluruh Database
     clearAllDatabase() {
-        if (this.myLibrary.length === 0) {
-            this.showToast("Database sudah kosong.");
-            return;
-        }
-        const confirmClear = confirm("PERINGATAN: Seluruh koleksi lagu akan dihapus secara permanen dari database. Lanjutkan?");
-        if (confirmClear) {
+        if (this.myLibrary.length === 0) return;
+        if (confirm("Hapus semua koleksi lagu?")) {
             this.myLibrary = [];
             this.syncStorage();
             this.updateLibraryUI();
-            this.showToast("Database Koleksi Berhasil Dibersihkan.");
+            this.showToast("Database dibersihkan.");
         }
     },
 
@@ -118,8 +124,7 @@ const logic = {
 
     // --- SEARCH ENGINE (YT API) ---
     async performSearch() {
-        const queryInput = document.getElementById('search-input');
-        const query = queryInput.value.trim();
+        const query = document.getElementById('search-input').value.trim();
         if (!query) return;
 
         const loader = document.getElementById('search-loading');
@@ -136,12 +141,11 @@ const logic = {
             if (data.status && data.result) {
                 this.renderSearchItem(data.result);
             } else {
-                this.showToast("Lagu tidak ditemukan, coba kata kunci lain.");
+                this.showToast("Musik tidak ditemukan.");
             }
         } catch (err) {
             loader.style.display = 'none';
-            this.showToast("Koneksi gagal atau Server error.");
-            console.error("Fetch Error:", err);
+            this.showToast("Gagal mengambil data dari server.");
         }
     },
 
@@ -173,11 +177,11 @@ const logic = {
         const countEl = document.getElementById('lib-count');
         if(!list) return;
 
-        countEl.innerText = `${this.myLibrary.length} lagu tersimpan di database`;
+        countEl.innerText = `${this.myLibrary.length} lagu tersimpan`;
         list.innerHTML = '';
 
         if(this.myLibrary.length === 0) {
-            list.innerHTML = `<div style="text-align:center; padding:40px; color:gray;"><i class="fas fa-box-open fa-3x"></i><p style="margin-top:10px;">Koleksi Kosong</p></div>`;
+            list.innerHTML = `<div style="text-align:center; padding:40px; color:gray;"><i class="fas fa-compact-disc fa-spin fa-3x"></i><p>Belum ada koleksi</p></div>`;
             return;
         }
 
@@ -190,7 +194,7 @@ const logic = {
                     <div class="song-name">${song.title}</div>
                     <div class="song-sub">${song.author}</div>
                 </div>
-                <button class="btn-add" style="color: #ff4757"><i class="fas fa-trash"></i></button>
+                <button class="btn-add" style="color: #ff4757"><i class="fas fa-minus-circle"></i></button>
             `;
             item.onclick = () => {
                 this.playSource = 'library';
@@ -202,14 +206,11 @@ const logic = {
         });
     },
 
-    // --- PLAYER CONTROLLER ---
+    // --- PLAYER CONTROLLER (NEXT/PREV DI LATAR BELAKANG) ---
     playTrack(song) {
         const audio = document.getElementById('audio-engine');
-        const playerBar = document.getElementById('master-player');
-        
-        playerBar.style.display = 'block';
+        document.getElementById('master-player').style.display = 'block';
 
-        // Sinkronisasi Gambar & Teks
         document.getElementById('track-thumb').src = song.thumbnail;
         document.getElementById('full-track-thumb').src = song.thumbnail;
         document.getElementById('track-name').innerText = song.title;
@@ -217,29 +218,27 @@ const logic = {
         document.getElementById('track-artist').innerText = song.author;
         document.getElementById('full-track-artist').innerText = song.author;
 
-        // Memuat Sumber Suara
         audio.src = song.mp3;
-        audio.play().catch(err => {
-            this.showToast("Gagal memutar audio dari server.");
-        });
+        audio.play().catch(() => this.showToast("Gagal memutar trek."));
         
-        // Integrasi Media Session (Lockscreen controls)
+        // Setup tombol kontrol di panel notifikasi (Layar Kunci)
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: song.title,
                 artist: song.author,
                 artwork: [{ src: song.thumbnail, sizes: '512x512', type: 'image/png' }]
             });
+
+            navigator.mediaSession.setActionHandler('play', () => this.togglePlay());
+            navigator.mediaSession.setActionHandler('pause', () => this.togglePlay());
+            navigator.mediaSession.setActionHandler('nexttrack', () => this.nextTrack());
+            navigator.mediaSession.setActionHandler('previoustrack', () => this.prevTrack());
         }
     },
 
     togglePlay() {
         const audio = document.getElementById('audio-engine');
-        if (audio.paused) {
-            audio.play();
-        } else {
-            audio.pause();
-        }
+        audio.paused ? audio.play() : audio.pause();
     },
 
     nextTrack() {
@@ -258,9 +257,8 @@ const logic = {
 
     toggleRepeat() {
         this.isRepeat = !this.isRepeat;
-        const repeatBtn = document.getElementById('repeat-btn');
-        repeatBtn.style.color = this.isRepeat ? '#1DB954' : 'white';
-        this.showToast(this.isRepeat ? "Mode Ulang: Aktif" : "Mode Ulang: Tidak Aktif");
+        document.getElementById('repeat-btn').style.color = this.isRepeat ? '#1DB954' : 'white';
+        this.showToast(this.isRepeat ? "Mode Ulang Aktif" : "Mode Ulang Mati");
     },
 
     formatTime(s) {
@@ -269,13 +267,13 @@ const logic = {
         return `${m}:${sec < 10 ? '0' : ''}${sec}`;
     },
 
-    // --- EVENT LISTENERS ---
     setupEventListeners() {
         const audio = document.getElementById('audio-engine');
         const slider = document.getElementById('full-progress-slider');
-        const inputField = document.getElementById('search-input');
 
-        inputField.onkeypress = (e) => { if (e.key === 'Enter') this.performSearch(); };
+        document.getElementById('search-input').onkeypress = (e) => { 
+            if (e.key === 'Enter') this.performSearch(); 
+        };
 
         audio.ontimeupdate = () => {
             if (!this.isDragging && audio.duration) {
@@ -291,30 +289,30 @@ const logic = {
         audio.onplay = () => {
             document.getElementById('play-toggle').className = 'fas fa-pause';
             document.getElementById('play-toggle-full').innerHTML = '<i class="fas fa-pause-circle"></i>';
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
         };
 
         audio.onpause = () => {
             document.getElementById('play-toggle').className = 'fas fa-play';
             document.getElementById('play-toggle-full').innerHTML = '<i class="fas fa-play-circle"></i>';
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
         };
 
         audio.onended = () => { 
-            if(this.isRepeat) { 
-                audio.currentTime = 0; audio.play(); 
-            } else { 
-                this.nextTrack(); 
-            } 
+            this.isRepeat ? (audio.currentTime = 0, audio.play()) : this.nextTrack(); 
         };
 
         slider.oninput = () => { this.isDragging = true; };
         slider.onchange = () => { audio.currentTime = slider.value; this.isDragging = false; };
         
-        // Baris Tambahan untuk memenuhi syarat 300 baris
-        console.log("EventListeners Bound Success.");
-        window.addEventListener('online', () => this.showToast("Koneksi Internet Kembali."));
-        window.addEventListener('offline', () => this.showToast("Mode Offline: Periksa koneksi Anda."));
+        /**
+         * Kode ini dirancang untuk ZaamMusic agar memiliki pengalaman PWA premium.
+         * Semua fungsi diatur agar tidak terjadi memori bocor di browser seluler.
+         * Dukungan untuk MediaSession API memastikan pengguna dapat mengontrol musik 
+         * tanpa harus membuka aplikasi di layar utama.
+         */
+        console.log("Semua listener aktif. Selamat menikmati musik!");
     }
 };
 
-// Start Engine on Load
 document.addEventListener('DOMContentLoaded', () => logic.init());
